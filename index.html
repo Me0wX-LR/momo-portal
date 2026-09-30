@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>毛毛遊戲</title>
+<link rel="stylesheet" href="faker.css">
 <style>
   html, body {
     margin: 0;
@@ -16,17 +17,26 @@
     box-sizing: border-box;
     padding: calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
   }
-  header, .doors, .boards { max-width: 960px; margin-left: auto; margin-right: auto; }
+  .layout {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 22px;
+    align-items: stretch;
+  }
+  .boards { position: sticky; top: 12px; align-self: start; }
   header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     margin-bottom: 16px;
+    grid-column: 1 / -1;
   }
   h1 { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: 0.04em; }
   .langs { display: flex; gap: 8px; }
-  .langs button {
+  .langs button, .faker-go, #music-toggle, #watch-close {
     font: inherit;
     min-height: 44px;
     padding: 8px 12px;
@@ -37,14 +47,35 @@
     cursor: pointer;
   }
   .langs button[aria-pressed="true"] { border-color: #f4f4f4; }
-  .doors {
-    display: flex;
-    flex-direction: row;
-    gap: 12px;
+  .faker-card {
+    display: grid;
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 14px;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: #0c0c0c;
+    border: 1px solid #e2b340;
+    border-radius: 16px;
   }
+  .faker-card img {
+    width: 112px;
+    height: 84px;
+    object-fit: cover;
+    object-position: 52% 18%;
+    border-radius: 10px;
+    background: #1a140c;
+  }
+  .faker-card h2 {
+    margin: 0 0 6px;
+    color: #e2b340;
+    font-size: 18px;
+    letter-spacing: 0.04em;
+  }
+  .faker-card p { margin: 0; color: #d7d7d7; font-size: 15px; line-height: 1.45; }
+  .track { margin-top: 6px; color: #9a9a9a; font-size: 13px; }
+  .doors { display: flex; flex-direction: row; gap: 12px; }
+  .gate { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
   .door {
-    flex: 1 1 0;
-    min-width: 0;
     display: flex;
     flex-direction: column;
     text-decoration: none;
@@ -54,28 +85,25 @@
     border-radius: 16px;
     overflow: hidden;
   }
-  .door:focus-visible { outline: 3px solid #e2b340; outline-offset: 3px; }
+  .door:focus-visible, .faker-go:focus-visible, #music-toggle:focus-visible, #watch-close:focus-visible {
+    outline: 3px solid #e2b340;
+    outline-offset: 3px;
+  }
   .door > .cover {
     display: block;
     width: 100%;
-    height: auto;
-    margin: 0;
-    padding: 0;
     aspect-ratio: 1 / 1;
     position: relative;
     overflow: hidden;
     background: #000;
     line-height: 0;
-    flex: 0 0 auto;
   }
   .door > .cover img {
     position: absolute;
-    left: 0;
-    top: 0;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    object-position: center;
   }
   .door > span:not(.cover) {
     display: block;
@@ -85,12 +113,101 @@
     font-weight: 800;
     letter-spacing: 0.04em;
   }
-  .boards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 18px;
-    margin-top: 22px;
+  .faker-go {
+    border: 2px solid #e2b340;
+    color: #e2b340;
+    background: transparent;
+    font-weight: 800;
   }
+  .faker-go[aria-pressed="true"] {
+    color: #1a1a1a;
+    background: #e2b340;
+  }
+  .faker-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0 0 8px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid #555;
+    color: #9a9a9a;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+  .faker-state .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #666;
+  }
+  .faker-state.is-on {
+    border-color: #e2b340;
+    color: #1a1a1a;
+    background: #e2b340;
+  }
+  .faker-state.is-on .dot { background: #1a1a1a; }
+  .gate.is-on .door { border-color: #e2b340; }
+  #watch { margin-top: 16px; }
+  #watch[hidden] { display: none !important; }
+  .watch-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin-bottom: 8px;
+  }
+  .eq { display: flex; align-items: flex-end; gap: 3px; height: 16px; }
+  .eq i {
+    display: block;
+    width: 3px;
+    height: 4px;
+    background: #e2b340;
+    border-radius: 2px;
+  }
+  .watch-bar.is-on .eq i { animation: eq 0.9s ease-in-out infinite; }
+  .watch-bar.is-on .eq i:nth-child(2) { animation-delay: 0.15s; }
+  .watch-bar.is-on .eq i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes eq {
+    0%, 100% { height: 4px; }
+    50% { height: 16px; }
+  }
+  .vol {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #ffe7a3;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  #volume {
+    width: 120px;
+    min-height: 44px;
+    accent-color: #e2b340;
+  }
+  #volume-readout { min-width: 2.4em; font-variant-numeric: tabular-nums; }
+  #anthem { display: none; }
+  #track { margin: 0; color: #ffe7a3; font-size: 14px; font-weight: 700; }
+  #reflex-line {
+    margin: 0;
+    flex: 1 1 160px;
+    color: #d0d0d0;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    min-height: 1.2em;
+  }
+  .frame-wrap {
+    height: min(780px, calc(100dvh - 120px));
+    min-height: 520px;
+    background: #000;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  #watch-frame { width: 100%; height: 100%; border: 0; background: #000; }
+  .boards { display: flex; flex-direction: column; gap: 18px; }
+  .sync-note { margin: 0 0 8px; color: #9a9a9a; font-size: 13px; line-height: 1.45; }
   .board-title { margin: 0 0 8px; color: #e2b340; font-size: 16px; }
   .board {
     list-style: none;
@@ -108,48 +225,95 @@
   }
   .board.pet li { grid-template-columns: 1.6em minmax(0, 1fr) auto auto; }
   .board .empty { display: block; color: #8d8d8d; }
-  @media (max-width: 720px) {
+  .board li > span:nth-child(2) { white-space: nowrap; }
+  .when { text-align: right; }
+  .when-date { display: block; color: #9a9a9a; font-size: 12px; }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
     h1 { font-size: 24px; }
     .doors { gap: 8px; }
     .door > span:not(.cover) { font-size: 16px; padding: 10px 4px 12px; }
-    .boards { grid-template-columns: 1fr; }
-    .langs button { min-height: 44px; }
+    .faker-card { grid-template-columns: 88px minmax(0, 1fr); }
+    .faker-card img { width: 88px; height: 66px; }
+    .frame-wrap { min-height: 70dvh; height: 78dvh; }
   }
 </style>
 </head>
 <body>
-  <header>
-    <h1 id="title">毛毛遊戲</h1>
-    <div class="langs">
-      <button type="button" data-lang="zh-Hant">繁體</button>
-      <button type="button" data-lang="en">English</button>
-      <button type="button" data-lang="zh-Hans">简体</button>
+  <div class="layout">
+    <header>
+      <h1 id="title">毛毛遊戲</h1>
+      <div class="langs">
+        <button type="button" data-lang="zh-Hant">繁體</button>
+        <button type="button" data-lang="en">English</button>
+        <button type="button" data-lang="zh-Hans">简体</button>
+      </div>
+    </header>
+    <div class="stage-col">
+      <section class="faker-card">
+        <img src="media/faker.jpg" alt="Faker">
+        <div>
+          <h2 id="faker-title">Faker 上場</h2>
+          <p id="faker-state" class="faker-state"><span class="dot" aria-hidden="true"></span><span id="faker-state-text">未上場</span></p>
+          <p id="faker-body"></p>
+          <p class="track" id="faker-track"></p>
+        </div>
+      </section>
+      <nav class="doors" id="doors">
+        <div class="gate">
+          <a class="door" id="parry-link" href="/parry/">
+            <span class="cover"><img id="parry-cover" src="/momo-flurry-frames/f01.jpg" alt="毛毛"></span>
+            <span id="parry-label">毛毛格擋</span>
+          </a>
+          <button type="button" class="faker-go" data-faker="parry" id="faker-parry" aria-pressed="false">Faker 上場</button>
+        </div>
+        <div class="gate">
+          <a class="door" id="pet-link" href="/pet/">
+            <span class="cover"><img id="pet-cover" src="/art/pet.jpg" alt="毛毛"></span>
+            <span id="pet-label">摸毛毛</span>
+          </a>
+          <button type="button" class="faker-go" data-faker="pet" id="faker-pet" aria-pressed="false">Faker 上場</button>
+        </div>
+      </nav>
+      <section id="watch" hidden>
+        <div class="watch-bar" id="watch-bar">
+          <div class="eq" aria-hidden="true"><i></i><i></i><i></i></div>
+          <p id="track">GODS ft. NewJeans · Worlds 2023</p>
+          <p id="reflex-line" aria-live="polite"></p>
+          <audio id="anthem" src="media/gods.mp3" loop preload="auto"></audio>
+          <button type="button" id="music-toggle">播放 GODS</button>
+          <label class="vol" for="volume">
+            <span id="volume-name">音量</span>
+            <input id="volume" type="range" min="0" max="100" step="1" value="72">
+            <span id="volume-readout">72</span>
+          </label>
+          <button type="button" id="watch-close">關閉</button>
+        </div>
+        <div class="frame-wrap">
+          <iframe id="watch-frame" title="Faker" allow="autoplay"></iframe>
+        </div>
+      </section>
     </div>
-  </header>
-  <nav class="doors" id="doors">
-    <a class="door" id="parry-link" href="https://me0wx-lr.github.io/momo-parry/">
-      <span class="cover"><img src="https://me0wx-lr.github.io/momo-parry/momo-flurry-frames/f01.jpg" alt="毛毛"></span>
-      <span id="parry-label">毛毛格擋</span>
-    </a>
-    <a class="door" id="pet-link" href="https://me0wx-lr.github.io/momo-pet/">
-      <span class="cover"><img src="https://me0wx-lr.github.io/momo-pet/art/calm.jpg" alt="毛毛"></span>
-      <span id="pet-label">摸毛毛</span>
-    </a>
-  </nav>
-  <div class="boards">
-    <section>
-      <h2 class="board-title" id="parry-board-title">格擋紀錄</h2>
-      <ol class="board" id="parry-board"></ol>
-    </section>
-    <section>
-      <h2 class="board-title" id="pet-board-title">摸毛毛紀錄</h2>
-      <ol class="board pet" id="pet-board"></ol>
-    </section>
+    <div class="boards">
+      <p id="sync-note" class="sync-note"></p>
+      <section>
+        <h2 class="board-title" id="parry-board-title">格擋紀錄</h2>
+        <ol class="board" id="parry-board"></ol>
+      </section>
+      <section>
+        <h2 class="board-title" id="pet-board-title">摸毛毛紀錄</h2>
+        <ol class="board pet" id="pet-board"></ol>
+      </section>
+    </div>
   </div>
+<script src="faker-policy.js"></script>
 <script>
 const PARRY_URL = "https://kvs.ix.workers.dev/momo-parry-me0wx-lr/scores";
 const PET_URL = "https://kvs.ix.workers.dev/momo-parry-me0wx-lr/pet-scores";
+const PARRY_LOCAL = "momo-parry-board";
+const PET_LOCAL = "momo-pet-board";
 const LANG_KEY = "momo-portal-lang";
+const FAKER = FakerPolicy.NAME;
 const STR = {
   "zh-Hant": {
     title: "毛毛遊戲",
@@ -159,7 +323,24 @@ const STR = {
     petBoard: "摸毛毛紀錄",
     empty: "還沒有紀錄。",
     down: "排行榜讀不到。",
+    localTag: "未上傳",
+    syncOk: "排行榜已更新",
+    syncDown: "線上排行榜讀不到。別人只留在自己電腦裡的成績，這裡看不到。",
+    syncLocal: "標成「未上傳」的成績還在這台電腦，線上排行榜沒收到。",
     unit: "秒",
+    fakerTitle: "Faker 上場",
+    fakerBody: "反應時間 106 到 120 毫秒，最快 106。他看到提示才按，也不會按錯。金環或縮手若比這次反應還短，就會來不及。成績記成 Faker (AI)。",
+    fakerTrack: "GODS ft. NewJeans · Worlds 2023 循環播放。",
+    fakerGo: "Faker 上場",
+    fakerStop: "正在打 · 再按就停",
+    fakerOff: "還沒上場",
+    fakerOnParry: "正在格擋",
+    fakerOnPet: "正在摸毛毛",
+    music: "播放 GODS",
+    musicOn: "暫停 GODS",
+    close: "關閉",
+    volume: "音量",
+    frame: "Faker 正在打",
     rankStage: (n) => n >= 10 ? "通關" : n <= 0 ? "未過關" : "第 " + n + " 關"
   },
   en: {
@@ -170,7 +351,24 @@ const STR = {
     petBoard: "Pet scores",
     empty: "No scores yet.",
     down: "The board could not be read.",
+    localTag: "This device",
+    syncOk: "Shared board updated",
+    syncDown: "The shared board could not be read. A score saved only on someone else's computer does not show here.",
+    syncLocal: "Rows marked “This device” are only on this computer. The shared board did not take them.",
     unit: "s",
+    fakerTitle: "Faker plays",
+    fakerBody: "Reaction 106–120 ms, best 106. He presses only after he sees the tell, and the button is always the right one. If the window is shorter than that reaction, he is late, the same as a person. The score is saved as Faker (AI).",
+    fakerTrack: "GODS ft. NewJeans · Worlds 2023, looped.",
+    fakerGo: "Faker plays",
+    fakerStop: "On · press to stop",
+    fakerOff: "Off",
+    fakerOnParry: "Parry is on",
+    fakerOnPet: "Pet is on",
+    music: "Play GODS",
+    musicOn: "Pause GODS",
+    close: "Close",
+    volume: "Volume",
+    frame: "Faker is playing",
     rankStage: (n) => n >= 10 ? "Clear" : n <= 0 ? "No clear" : "Stage " + n
   },
   "zh-Hans": {
@@ -181,7 +379,24 @@ const STR = {
     petBoard: "摸毛毛纪录",
     empty: "还没有纪录。",
     down: "排行榜读不到。",
+    localTag: "未上传",
+    syncOk: "排行榜已更新",
+    syncDown: "线上排行榜读不到。别人只留在自己电脑里的成绩，这里看不到。",
+    syncLocal: "标成「未上传」的成绩还在这台电脑，线上排行榜没收到。",
     unit: "秒",
+    fakerTitle: "Faker 上场",
+    fakerBody: "反应时间 106 到 120 毫秒，最快 106。他看到提示才按，也不会按错。金环或缩手若比这次反应还短，就会来不及。成绩记成 Faker (AI)。",
+    fakerTrack: "GODS ft. NewJeans · Worlds 2023 循环播放。",
+    fakerGo: "Faker 上场",
+    fakerStop: "正在打 · 再按就停",
+    fakerOff: "还没上场",
+    fakerOnParry: "正在格挡",
+    fakerOnPet: "正在摸毛毛",
+    music: "播放 GODS",
+    musicOn: "暂停 GODS",
+    close: "关闭",
+    volume: "音量",
+    frame: "Faker 正在打",
     rankStage: (n) => n >= 10 ? "通关" : n <= 0 ? "未过关" : "第 " + n + " 关"
   }
 };
@@ -190,6 +405,31 @@ let parryRows = [];
 let petRows = [];
 let parryNote = "";
 let petNote = "";
+let parryOptimistic = [];
+let petOptimistic = [];
+let live = null;
+let watching = "";
+let syncNote = "";
+let boardToken = 0;
+const audio = document.getElementById("anthem");
+const VOL_KEY = "momo-faker-volume";
+function readVolume() {
+  const n = Number(localStorage.getItem(VOL_KEY));
+  if (!Number.isFinite(n)) return 72;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+let volume = readVolume();
+audio.volume = volume / 100;
+let musicOn = false;
+function applyVolume(next) {
+  volume = Math.max(0, Math.min(100, Math.round(Number(next))));
+  audio.volume = volume / 100;
+  localStorage.setItem(VOL_KEY, String(volume));
+  const input = document.getElementById("volume");
+  const readout = document.getElementById("volume-readout");
+  if (input && Number(input.value) !== volume) input.value = String(volume);
+  if (readout) readout.textContent = String(volume);
+}
 
 function T() { return STR[lang] || STR["zh-Hant"]; }
 function cleanName(raw) {
@@ -219,8 +459,9 @@ function parryList(list) {
     seen.add(id);
     rows.push({ name, ms, at });
   }
-  rows.sort((a, b) => b.ms - a.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
-  return rows.slice(0, 10);
+  const latest = FakerPolicy.keepLatest(rows);
+  latest.sort((a, b) => b.ms - a.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  return latest;
 }
 function petList(list) {
   const rows = [];
@@ -238,30 +479,81 @@ function petList(list) {
     seen.add(id);
     rows.push({ name, stage: stageNo, ms, at });
   }
-  rows.sort((a, b) => b.stage - a.stage || a.ms - b.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
-  return rows.slice(0, 10);
+  const latest = FakerPolicy.keepLatest(rows);
+  latest.sort((a, b) => b.stage - a.stage || a.ms - b.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  return latest;
+}
+function readStored(key) {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    return [];
+  }
+}
+function rowId(row, kind) {
+  return kind === "pet"
+    ? row.name + "|" + row.stage + "|" + row.ms + "|" + row.at
+    : row.name + "|" + row.ms + "|" + row.at;
+}
+function mergeSaved(remote, optimistic, kind) {
+  const base = kind === "pet" ? petList(remote) : parryList(remote);
+  const pending = optimistic.filter((row) => !base.some((item) => rowId(item, kind) === rowId(row, kind)));
+  return kind === "pet" ? petList(base.concat(pending)) : parryList(base.concat(pending));
+}
+function withLive(rows, kind) {
+  if (!live || live.game !== kind || !live.row) return rows;
+  const row = Object.assign({ live: true, at: "live" }, live.row);
+  const merged = rows.concat([row]);
+  if (kind === "pet") merged.sort((a, b) => (b.stage || 0) - (a.stage || 0) || a.ms - b.ms);
+  else merged.sort((a, b) => b.ms - a.ms);
+  return merged.slice(0, 10);
 }
 function render(el, rows, kind) {
   el.replaceChildren();
-  if (!rows.length) {
+  const shown = withLive(rows, kind);
+  if (!shown.length) {
     const li = document.createElement("li");
     li.className = "empty";
     li.textContent = (kind === "pet" ? petNote : parryNote) || T().empty;
     el.append(li);
     return;
   }
-  rows.forEach((row, i) => {
+  shown.forEach((row, i) => {
     const li = document.createElement("li");
+    if (row.name === FAKER) li.classList.add("faker");
+    if (row.live) li.classList.add("live");
     const rank = document.createElement("span");
     rank.textContent = String(i + 1);
     const name = document.createElement("span");
     name.textContent = row.name;
+    if (row.live) {
+      const badge = document.createElement("span");
+      badge.className = "live-badge";
+      badge.textContent = "LIVE";
+      name.append(badge);
+    }
+    if (row.localOnly) {
+      const badge = document.createElement("span");
+      badge.className = "local-badge";
+      badge.textContent = T().localTag;
+      name.append(badge);
+    }
     const when = document.createElement("span");
-    when.textContent = (row.ms / 1000).toFixed(1) + " " + T().unit + "  " + formatWhen(row.at);
+    when.className = "when";
+    const clock = document.createElement("span");
+    clock.textContent = (row.ms / 1000).toFixed(1) + " " + T().unit;
+    when.append(clock);
+    if (!row.live) {
+      const date = document.createElement("span");
+      date.className = "when-date";
+      date.textContent = formatWhen(row.at);
+      when.append(date);
+    }
     li.append(rank, name);
     if (kind === "pet") {
       const stage = document.createElement("span");
-      stage.textContent = T().rankStage(row.stage);
+      stage.textContent = row.label || T().rankStage(row.stage);
       li.append(stage);
     }
     li.append(when);
@@ -275,13 +567,46 @@ function paint() {
   document.getElementById("title").textContent = t.title;
   document.getElementById("parry-label").textContent = t.parry;
   document.getElementById("pet-label").textContent = t.pet;
+  document.getElementById("parry-link").href = gamePage("parry");
+  document.getElementById("pet-link").href = gamePage("pet");
+  if (onGithub()) {
+    document.getElementById("parry-cover").src = "https://me0wx-lr.github.io/momo-parry/momo-flurry-frames/f01.jpg";
+    document.getElementById("pet-cover").src = "https://me0wx-lr.github.io/momo-pet/art/pet.jpg";
+  }
   document.getElementById("parry-board-title").textContent = t.parryBoard;
   document.getElementById("pet-board-title").textContent = t.petBoard;
+  document.getElementById("faker-title").textContent = t.fakerTitle;
+  document.getElementById("faker-body").textContent = t.fakerBody;
+  document.getElementById("faker-track").textContent = t.fakerTrack;
+  const parryOn = watching === "parry";
+  const petOn = watching === "pet";
+  const parryBtn = document.getElementById("faker-parry");
+  const petBtn = document.getElementById("faker-pet");
+  parryBtn.textContent = parryOn ? t.fakerStop : t.fakerGo;
+  petBtn.textContent = petOn ? t.fakerStop : t.fakerGo;
+  parryBtn.setAttribute("aria-pressed", parryOn ? "true" : "false");
+  petBtn.setAttribute("aria-pressed", petOn ? "true" : "false");
+  parryBtn.closest(".gate").classList.toggle("is-on", parryOn);
+  petBtn.closest(".gate").classList.toggle("is-on", petOn);
+  const state = document.getElementById("faker-state");
+  const stateText = document.getElementById("faker-state-text");
+  state.classList.toggle("is-on", !!watching);
+  stateText.textContent = petOn ? t.fakerOnPet : parryOn ? t.fakerOnParry : t.fakerOff;
+  document.getElementById("watch-close").textContent = t.close;
+  document.getElementById("volume-name").textContent = t.volume;
+  document.getElementById("volume").setAttribute("aria-label", t.volume);
+  document.getElementById("music-toggle").textContent = musicOn ? t.musicOn : t.music;
+  document.getElementById("music-toggle").setAttribute("aria-pressed", musicOn ? "true" : "false");
+  document.getElementById("watch-bar").classList.toggle("is-on", musicOn);
+  const frame = document.getElementById("watch-frame");
+  if (watching) frame.title = t.frame + " · " + (watching === "pet" ? t.pet : t.parry);
   document.querySelectorAll("[data-lang]").forEach((btn) => {
     btn.setAttribute("aria-pressed", btn.dataset.lang === lang ? "true" : "false");
   });
   render(document.getElementById("parry-board"), parryRows, "parry");
   render(document.getElementById("pet-board"), petRows, "pet");
+  const note = document.getElementById("sync-note");
+  if (note) note.textContent = syncNote || T().syncOk;
 }
 async function loadBoard(url, shape) {
   const resp = await fetch(url, { cache: "no-store" });
@@ -297,30 +622,131 @@ function setLang(next) {
   localStorage.setItem(LANG_KEY, lang);
   paint();
 }
+async function refreshBoards() {
+  const token = ++boardToken;
+  let parryRemote = null;
+  let petRemote = null;
+  let parryDown = false;
+  let petDown = false;
+  try {
+    parryRemote = await loadBoard(PARRY_URL, (data) => data);
+  } catch (err) {
+    parryDown = true;
+  }
+  try {
+    petRemote = await loadBoard(PET_URL, (data) => data);
+  } catch (err) {
+    petDown = true;
+  }
+  if (token !== boardToken) return;
+  const parryMerged = parryDown
+    ? parryList(readStored(PARRY_LOCAL).concat(parryOptimistic))
+    : mergeSaved(parryRemote.concat(readStored(PARRY_LOCAL)), parryOptimistic, "parry");
+  const petMerged = petDown
+    ? petList(readStored(PET_LOCAL).concat(petOptimistic))
+    : mergeSaved(petRemote.concat(readStored(PET_LOCAL)), petOptimistic, "pet");
+  parryRows = FakerPolicy.tagLocal(parryDown ? null : parryList(parryRemote), parryMerged, "parry");
+  petRows = FakerPolicy.tagLocal(petDown ? null : petList(petRemote), petMerged, "pet");
+  parryNote = parryDown && !parryRows.length ? T().down : "";
+  petNote = petDown && !petRows.length ? T().down : "";
+  const anyLocal = parryRows.some((row) => row.localOnly) || petRows.some((row) => row.localOnly);
+  syncNote = parryDown || petDown ? T().syncDown : anyLocal ? T().syncLocal : T().syncOk;
+  paint();
+}
+function setMusic(on) {
+  const done = () => {
+    musicOn = on && !audio.paused;
+    paint();
+  };
+  if (!on) {
+    audio.pause();
+    done();
+    return;
+  }
+  audio.play().then(done).catch(done);
+}
+function onGithub() { return location.hostname.endsWith("github.io"); }
+function gamePage(game) {
+  if (onGithub()) {
+    return game === "pet" ? "https://me0wx-lr.github.io/momo-pet/" : "https://me0wx-lr.github.io/momo-parry/";
+  }
+  return game === "pet" ? "/pet/" : "/parry/";
+}
+function openWatch(game) {
+  watching = game;
+  live = null;
+  document.getElementById("reflex-line").textContent = "";
+  const frame = document.getElementById("watch-frame");
+  const src = gamePage(game) + "?faker=1&lang=" + encodeURIComponent(lang);
+  frame.src = src;
+  document.getElementById("watch").hidden = false;
+  document.getElementById("watch").scrollIntoView({ behavior: "smooth", block: "start" });
+  setMusic(true);
+  paint();
+}
+function closeWatch() {
+  watching = "";
+  live = null;
+  const frame = document.getElementById("watch-frame");
+  frame.src = "about:blank";
+  document.getElementById("watch").hidden = true;
+  setMusic(false);
+  paint();
+}
+function remember(kind, row) {
+  const bucket = kind === "pet" ? petOptimistic : parryOptimistic;
+  bucket.push(row);
+  if (kind === "pet") petRows = mergeSaved(petRows, [row], "pet");
+  else parryRows = mergeSaved(parryRows, [row], "parry");
+  live = null;
+  paint();
+  refreshBoards();
+}
 document.addEventListener("click", (event) => {
-  const btn = event.target.closest("[data-lang]");
-  if (!btn) return;
-  setLang(btn.dataset.lang);
+  const langBtn = event.target.closest("[data-lang]");
+  if (langBtn) {
+    setLang(langBtn.dataset.lang);
+    return;
+  }
+  const go = event.target.closest("[data-faker]");
+  if (go) {
+    if (watching === go.dataset.faker) closeWatch();
+    else openWatch(go.dataset.faker);
+  }
+});
+document.getElementById("music-toggle").addEventListener("click", () => setMusic(!musicOn));
+document.getElementById("volume").addEventListener("input", (event) => applyVolume(event.target.value));
+applyVolume(volume);
+document.getElementById("watch-close").addEventListener("click", closeWatch);
+window.addEventListener("message", (event) => {
+  if (event.origin !== location.origin) return;
+  const data = event.data;
+  if (!data || data.source !== "momo-faker") return;
+  if (data.type === "music-toggle") {
+    setMusic(!musicOn);
+    return;
+  }
+  if (data.type === "reflex" && typeof data.text === "string") {
+    document.getElementById("reflex-line").textContent = data.text;
+    return;
+  }
+  if (data.type === "live" && data.row) {
+    live = { game: data.game, row: data.row };
+    paint();
+    return;
+  }
+  if (data.type === "saved" && data.row) {
+    remember(data.game === "pet" ? "pet" : "parry", data.row);
+  }
 });
 const saved = localStorage.getItem(LANG_KEY);
 lang = STR[saved] ? saved : "zh-Hant";
 paint();
-loadBoard(PARRY_URL, parryList).then((rows) => {
-  parryRows = rows;
-  parryNote = "";
-  paint();
-}).catch(() => {
-  parryNote = T().down;
-  paint();
-});
-loadBoard(PET_URL, petList).then((rows) => {
-  petRows = rows;
-  petNote = "";
-  paint();
-}).catch(() => {
-  petNote = T().down;
-  paint();
-});
+refreshBoards();
+setInterval(() => {
+  if (document.hidden) return;
+  refreshBoards();
+}, 5000);
 </script>
 </body>
 </html>
