@@ -28,7 +28,10 @@
     const roll = typeof rng === "function" ? Number(rng()) : Math.random();
     const u = Number.isFinite(roll) ? Math.min(1, Math.max(0, roll)) : 0.5;
     const spread = (RT_MAX - RT_MIN) * (1 - f);
-    return { rt: RT_MIN + u * spread, error: (u - 0.5) * spread, focus: f };
+    // Aim stays noisy even after his reaction locks at 106 ms.
+    // A ring only a few milliseconds wide is not a sure hit.
+    const aimHalf = 32 + 16 * (1 - f);
+    return { rt: RT_MIN + u * spread, error: (u - 0.5) * 2 * aimHalf, focus: f };
   }
 
   function reactionDelay(rng, focus) {
@@ -45,8 +48,8 @@
   }
 
   // Windup is the tell. When that tell is long enough, he times the ring.
-  // When the punch is faster than his reaction, he still swings at the
-  // predicted center. The swing only counts if it lands inside the real ring.
+  // When the punch is faster than 106 ms, he still swings, but the aim
+  // stays wide enough that a short ring is usually a miss.
   function onParryTell(tellAt, openAt, windowEnds, rng, nominalCenter, focus) {
     const sample = sampleReaction(rng, focus);
     const rt = sample.rt;
