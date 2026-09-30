@@ -1,4 +1,4 @@
-# 毛毛
+# 毛毛遊戲
 
 入口：<https://me0wx-lr.github.io/momo-portal/>
 
