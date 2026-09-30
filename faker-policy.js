@@ -127,12 +127,41 @@
     return true;
   }
 
+  function unionRows(lists, kind) {
+    const seen = new Set();
+    const out = [];
+    for (const list of lists) {
+      for (const row of list || []) {
+        if (!row || typeof row.name !== "string" || !row.at) continue;
+        if (!Number.isFinite(Number(row.ms))) continue;
+        if (kind === "pet" && !Number.isFinite(Number(row.stage))) continue;
+        const id = scoreKey(row, kind);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        out.push(row);
+      }
+    }
+    return out;
+  }
+
+  function coversRows(next, prev, kind) {
+    const have = new Set((next || []).map((row) => scoreKey(row, kind)));
+    for (const row of prev || []) {
+      if (row && row.name && !have.has(scoreKey(row, kind))) return false;
+    }
+    return true;
+  }
+
   function plausibleParry(ms) {
     return ms >= 25000 && ms <= 180000;
   }
 
   function plausiblePet(stage, ms) {
     return stage >= 0 && stage <= 10 && ms >= 20000 && ms <= 400000;
+  }
+
+  function uploadLimited(message) {
+    return /limit exceeded/i.test(String(message || ""));
   }
 
   return {
@@ -150,7 +179,10 @@
     tagLocal,
     keepLatest,
     coversNames,
+    unionRows,
+    coversRows,
     plausibleParry,
-    plausiblePet
+    plausiblePet,
+    uploadLimited
   };
 });

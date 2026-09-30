@@ -36,7 +36,7 @@
   }
   h1 { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: 0.04em; }
   .langs { display: flex; gap: 8px; }
-  .langs button, .faker-go, #music-toggle, #watch-close {
+  .langs button, .faker-go, #music-toggle, #watch-close, #upload-btn {
     font: inherit;
     min-height: 44px;
     padding: 8px 12px;
@@ -296,6 +296,7 @@
     </div>
     <div class="boards">
       <p id="sync-note" class="sync-note"></p>
+      <button type="button" id="upload-btn">再上傳</button>
       <section>
         <h2 class="board-title" id="parry-board-title">格擋紀錄</h2>
         <ol class="board" id="parry-board"></ol>
@@ -327,6 +328,11 @@ const STR = {
     syncOk: "排行榜已更新",
     syncDown: "線上排行榜讀不到。別人只留在自己電腦裡的成績，這裡看不到。",
     syncLocal: "標成「未上傳」的成績還在這台電腦，線上排行榜沒收到。",
+    upload: "再上傳",
+    uploadFail: "現在送不出去。",
+    uploadLimit: "線上排行榜今天的寫入次數用完了。現有成績沒有被改掉。配額重置之後再按「再上傳」。",
+    uploadNone: "這台電腦沒有未上傳的成績。",
+    uploadOk: "已送到線上排行榜。",
     unit: "秒",
     fakerTitle: "Faker 上場",
     fakerBody: "反應時間 106 到 120 毫秒，最快 106。他看到提示才按，也不會按錯。金環或縮手若比這次反應還短，就會來不及。成績記成 Faker (AI)。",
@@ -355,6 +361,11 @@ const STR = {
     syncOk: "Shared board updated",
     syncDown: "The shared board could not be read. A score saved only on someone else's computer does not show here.",
     syncLocal: "Rows marked “This device” are only on this computer. The shared board did not take them.",
+    upload: "Upload again",
+    uploadFail: "The upload was refused.",
+    uploadLimit: "The shared board used up today's writes. Existing scores were not changed. Press Upload again after the daily quota resets.",
+    uploadNone: "This computer has no scores waiting to upload.",
+    uploadOk: "Sent to the shared board.",
     unit: "s",
     fakerTitle: "Faker plays",
     fakerBody: "Reaction 106–120 ms, best 106. He presses only after he sees the tell, and the button is always the right one. If the window is shorter than that reaction, he is late, the same as a person. The score is saved as Faker (AI).",
@@ -383,6 +394,11 @@ const STR = {
     syncOk: "排行榜已更新",
     syncDown: "线上排行榜读不到。别人只留在自己电脑里的成绩，这里看不到。",
     syncLocal: "标成「未上传」的成绩还在这台电脑，线上排行榜没收到。",
+    upload: "再上传",
+    uploadFail: "现在送不出去。",
+    uploadLimit: "线上排行榜今天的写入次数用完了。现有成绩没有被改掉。配额重置后再按「再上传」。",
+    uploadNone: "这台电脑没有未上传的成绩。",
+    uploadOk: "已送到线上排行榜。",
     unit: "秒",
     fakerTitle: "Faker 上场",
     fakerBody: "反应时间 106 到 120 毫秒，最快 106。他看到提示才按，也不会按错。金环或缩手若比这次反应还短，就会来不及。成绩记成 Faker (AI)。",
@@ -410,6 +426,7 @@ let petOptimistic = [];
 let live = null;
 let watching = "";
 let syncNote = "";
+let uploadError = "";
 let boardToken = 0;
 const audio = document.getElementById("anthem");
 const VOL_KEY = "momo-faker-volume";
@@ -594,6 +611,7 @@ function paint() {
   stateText.textContent = petOn ? t.fakerOnPet : parryOn ? t.fakerOnParry : t.fakerOff;
   document.getElementById("watch-close").textContent = t.close;
   document.getElementById("volume-name").textContent = t.volume;
+  document.getElementById("upload-btn").textContent = t.upload;
   document.getElementById("volume").setAttribute("aria-label", t.volume);
   document.getElementById("music-toggle").textContent = musicOn ? t.musicOn : t.music;
   document.getElementById("music-toggle").setAttribute("aria-pressed", musicOn ? "true" : "false");
@@ -650,7 +668,7 @@ async function refreshBoards() {
   parryNote = parryDown && !parryRows.length ? T().down : "";
   petNote = petDown && !petRows.length ? T().down : "";
   const anyLocal = parryRows.some((row) => row.localOnly) || petRows.some((row) => row.localOnly);
-  syncNote = parryDown || petDown ? T().syncDown : anyLocal ? T().syncLocal : T().syncOk;
+  syncNote = uploadError || (parryDown || petDown ? T().syncDown : anyLocal ? T().syncLocal : T().syncOk);
   paint();
 }
 function setMusic(on) {
@@ -671,6 +689,67 @@ function gamePage(game) {
     return game === "pet" ? "https://me0wx-lr.github.io/momo-pet/" : "https://me0wx-lr.github.io/momo-parry/";
   }
   return game === "pet" ? "/pet/" : "/parry/";
+}
+function uploadFailText(err) {
+  const raw = err && err.message ? String(err.message) : "";
+  if (FakerPolicy.uploadLimited(raw)) return T().uploadLimit;
+  return T().uploadFail + (raw ? " " + raw : "");
+}
+async function readRemote(url) {
+  const resp = await fetch(url, { cache: "no-store" });
+  const text = await resp.text();
+  if (resp.status === 404) return [];
+  if (!resp.ok) throw new Error(text || String(resp.status));
+  if (!text) return [];
+  const data = JSON.parse(text);
+  if (!Array.isArray(data)) throw new Error("shape");
+  return data;
+}
+function boardBody(rows, kind) {
+  return kind === "pet"
+    ? rows.map((row) => ({ name: row.name, stage: Number(row.stage), ms: Number(row.ms), at: row.at }))
+    : rows.map((row) => ({ name: row.name, ms: Number(row.ms), at: row.at }));
+}
+async function pushBoard(url, key, kind) {
+  const remote = await readRemote(url);
+  const union = FakerPolicy.unionRows([remote, readStored(key)], kind);
+  if (!FakerPolicy.coversRows(union, remote, kind)) throw new Error("would drop scores");
+  const body = boardBody(union, kind);
+  if (FakerPolicy.coversRows(remote, body, kind)) return false;
+  const put = await fetch(url, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!put.ok) throw new Error(await put.text() || String(put.status));
+  const seen = await readRemote(url);
+  const healed = boardBody(FakerPolicy.unionRows([seen, body], kind), kind);
+  if (FakerPolicy.coversRows(healed, seen, kind) && !FakerPolicy.coversRows(seen, healed, kind)) {
+    const again = await fetch(url, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(healed)
+    });
+    if (!again.ok) throw new Error(await again.text() || String(again.status));
+  }
+  return true;
+}
+async function forceUpload() {
+  const jobs = [
+    [PARRY_URL, PARRY_LOCAL, "parry"],
+    [PET_URL, PET_LOCAL, "pet"]
+  ];
+  let wrote = 0;
+  const errors = [];
+  for (const [url, key, kind] of jobs) {
+    try {
+      if (await pushBoard(url, key, kind)) wrote += 1;
+    } catch (err) {
+      errors.push(uploadFailText(err));
+    }
+  }
+  if (errors.length) throw new Error([...new Set(errors)].join(" "));
+  return wrote;
 }
 function openWatch(game) {
   watching = game;
@@ -716,6 +795,21 @@ document.addEventListener("click", (event) => {
 });
 document.getElementById("music-toggle").addEventListener("click", () => setMusic(!musicOn));
 document.getElementById("volume").addEventListener("input", (event) => applyVolume(event.target.value));
+document.getElementById("upload-btn").addEventListener("click", async () => {
+  const btn = document.getElementById("upload-btn");
+  btn.disabled = true;
+  try {
+    const wrote = await forceUpload();
+    uploadError = "";
+    syncNote = wrote ? T().uploadOk : T().uploadNone;
+  } catch (err) {
+    uploadError = err && err.message ? err.message : T().uploadFail;
+    syncNote = uploadError;
+  }
+  btn.disabled = false;
+  paint();
+  refreshBoards();
+});
 applyVolume(volume);
 document.getElementById("watch-close").addEventListener("click", closeWatch);
 window.addEventListener("message", (event) => {
