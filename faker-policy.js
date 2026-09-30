@@ -119,6 +119,14 @@
     return [...byName.values()];
   }
 
+  function coversNames(next, prev) {
+    const have = new Set((next || []).map((row) => row && row.name).filter(Boolean));
+    for (const row of prev || []) {
+      if (row && row.name && !have.has(row.name)) return false;
+    }
+    return true;
+  }
+
   function plausibleParry(ms) {
     return ms >= 25000 && ms <= 180000;
   }
@@ -141,6 +149,7 @@
     scoreKey,
     tagLocal,
     keepLatest,
+    coversNames,
     plausibleParry,
     plausiblePet
   };
