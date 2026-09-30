@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>毛毛</title>
+<style>
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: #000;
+    color: #f4f4f4;
+    font-family: "Segoe UI", "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+  }
+  body {
+    box-sizing: border-box;
+    padding: calc(18px + env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom));
+  }
+  header, .doors, .boards { max-width: 960px; margin-left: auto; margin-right: auto; }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  h1 { margin: 0; font-size: 32px; font-weight: 700; letter-spacing: 0.04em; }
+  .langs { display: flex; gap: 8px; }
+  .langs button {
+    font: inherit;
+    min-height: 44px;
+    padding: 8px 12px;
+    color: #fff;
+    background: #1c1c1c;
+    border: 1px solid #444;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .langs button[aria-pressed="true"] { border-color: #f4f4f4; }
+  .doors {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+  }
+  .door {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: #f4f4f4;
+    background: #0c0c0c;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .door:focus-visible { outline: 3px solid #e2b340; outline-offset: 3px; }
+  .door img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    background: #000;
+    display: block;
+  }
+  .door span {
+    display: block;
+    text-align: center;
+    padding: 14px 8px 16px;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+  .boards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-top: 22px;
+  }
+  .board-title { margin: 0 0 8px; color: #e2b340; font-size: 16px; }
+  .board {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .board li {
+    display: grid;
+    grid-template-columns: 1.6em minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 4px 0;
+    color: #d0d0d0;
+  }
+  .board.pet li { grid-template-columns: 1.6em minmax(0, 1fr) auto auto; }
+  .board .empty { display: block; color: #8d8d8d; }
+  @media (max-width: 720px) {
+    h1 { font-size: 24px; }
+    .doors { gap: 8px; }
+    .door span { font-size: 16px; padding: 10px 4px 12px; }
+    .boards { grid-template-columns: 1fr; }
+    .langs button { min-height: 44px; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1 id="title">毛毛</h1>
+    <div class="langs">
+      <button type="button" data-lang="zh-Hant">繁體</button>
+      <button type="button" data-lang="en">English</button>
+      <button type="button" data-lang="zh-Hans">简体</button>
+    </div>
+  </header>
+  <nav class="doors" id="doors">
+    <a class="door" id="parry-link" href="https://me0wx-lr.github.io/momo-parry/">
+      <img src="https://me0wx-lr.github.io/momo-parry/momo-flurry-frames/f01.jpg" alt="毛毛" width="480" height="480">
+      <span id="parry-label">毛毛格擋</span>
+    </a>
+    <a class="door" id="pet-link" href="https://me0wx-lr.github.io/momo-pet/">
+      <img src="https://me0wx-lr.github.io/momo-pet/art/calm.jpg" alt="毛毛" width="768" height="768">
+      <span id="pet-label">摸毛毛</span>
+    </a>
+  </nav>
+  <div class="boards">
+    <section>
+      <h2 class="board-title" id="parry-board-title">格擋紀錄</h2>
+      <ol class="board" id="parry-board"></ol>
+    </section>
+    <section>
+      <h2 class="board-title" id="pet-board-title">摸毛毛紀錄</h2>
+      <ol class="board pet" id="pet-board"></ol>
+    </section>
+  </div>
+<script>
+const PARRY_URL = "https://kvs.ix.workers.dev/momo-parry-me0wx-lr/scores";
+const PET_URL = "https://kvs.ix.workers.dev/momo-parry-me0wx-lr/pet-scores";
+const LANG_KEY = "momo-portal-lang";
+const STR = {
+  "zh-Hant": {
+    title: "毛毛",
+    parry: "毛毛格擋",
+    pet: "摸毛毛",
+    parryBoard: "格擋紀錄",
+    petBoard: "摸毛毛紀錄",
+    empty: "還沒有紀錄。",
+    down: "排行榜讀不到。",
+    unit: "秒",
+    rankStage: (n) => n >= 10 ? "通關" : n <= 0 ? "未過關" : "第 " + n + " 關"
+  },
+  en: {
+    title: "Momo",
+    parry: "Momo parry",
+    pet: "Pet Momo",
+    parryBoard: "Parry scores",
+    petBoard: "Pet scores",
+    empty: "No scores yet.",
+    down: "The board could not be read.",
+    unit: "s",
+    rankStage: (n) => n >= 10 ? "Clear" : n <= 0 ? "No clear" : "Stage " + n
+  },
+  "zh-Hans": {
+    title: "毛毛",
+    parry: "毛毛格挡",
+    pet: "摸毛毛",
+    parryBoard: "格挡纪录",
+    petBoard: "摸毛毛纪录",
+    empty: "还没有纪录。",
+    down: "排行榜读不到。",
+    unit: "秒",
+    rankStage: (n) => n >= 10 ? "通关" : n <= 0 ? "未过关" : "第 " + n + " 关"
+  }
+};
+let lang = "zh-Hant";
+let parryRows = [];
+let petRows = [];
+let parryNote = "";
+let petNote = "";
+
+function T() { return STR[lang] || STR["zh-Hant"]; }
+function cleanName(raw) {
+  return [...String(raw || "").replace(/[\u0000-\u001f*]/g, "").trim()].slice(0, 10).join("");
+}
+function formatWhen(iso) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const p = (n) => String(n).padStart(2, "0");
+  return date.getFullYear() + "-" + p(date.getMonth() + 1) + "-" + p(date.getDate()) + " " + p(date.getHours()) + ":" + p(date.getMinutes());
+}
+function takeTime(row) {
+  const at = typeof row.at === "string" ? row.at : "";
+  return at && Number.isFinite(Date.parse(at)) ? at : "";
+}
+function parryList(list) {
+  const rows = [];
+  const seen = new Set();
+  for (const row of list || []) {
+    if (!row || typeof row.name !== "string") continue;
+    const name = cleanName(row.name);
+    const ms = Math.round(Number(row.ms));
+    const at = takeTime(row);
+    if (!name || !Number.isFinite(ms) || ms <= 0 || ms > 3600000 || !at) continue;
+    const id = name + "|" + ms + "|" + at;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    rows.push({ name, ms, at });
+  }
+  rows.sort((a, b) => b.ms - a.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  return rows.slice(0, 10);
+}
+function petList(list) {
+  const rows = [];
+  const seen = new Set();
+  for (const row of list || []) {
+    if (!row || typeof row.name !== "string") continue;
+    const name = cleanName(row.name);
+    const ms = Math.round(Number(row.ms));
+    const stageNo = Math.round(Number(row.stage));
+    const at = takeTime(row);
+    if (!name || !Number.isFinite(ms) || ms <= 0 || ms > 3600000 || !at) continue;
+    if (!Number.isFinite(stageNo) || stageNo < 0 || stageNo > 10) continue;
+    const id = name + "|" + stageNo + "|" + ms + "|" + at;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    rows.push({ name, stage: stageNo, ms, at });
+  }
+  rows.sort((a, b) => b.stage - a.stage || a.ms - b.ms || (a.at < b.at ? -1 : a.at > b.at ? 1 : 0));
+  return rows.slice(0, 10);
+}
+function render(el, rows, kind) {
+  el.replaceChildren();
+  if (!rows.length) {
+    const li = document.createElement("li");
+    li.className = "empty";
+    li.textContent = (kind === "pet" ? petNote : parryNote) || T().empty;
+    el.append(li);
+    return;
+  }
+  rows.forEach((row, i) => {
+    const li = document.createElement("li");
+    const rank = document.createElement("span");
+    rank.textContent = String(i + 1);
+    const name = document.createElement("span");
+    name.textContent = row.name;
+    const when = document.createElement("span");
+    when.textContent = (row.ms / 1000).toFixed(1) + " " + T().unit + "  " + formatWhen(row.at);
+    li.append(rank, name);
+    if (kind === "pet") {
+      const stage = document.createElement("span");
+      stage.textContent = T().rankStage(row.stage);
+      li.append(stage);
+    }
+    li.append(when);
+    el.append(li);
+  });
+}
+function paint() {
+  const t = T();
+  document.documentElement.lang = lang;
+  document.title = t.title;
+  document.getElementById("title").textContent = t.title;
+  document.getElementById("parry-label").textContent = t.parry;
+  document.getElementById("pet-label").textContent = t.pet;
+  document.getElementById("parry-board-title").textContent = t.parryBoard;
+  document.getElementById("pet-board-title").textContent = t.petBoard;
+  document.querySelectorAll("[data-lang]").forEach((btn) => {
+    btn.setAttribute("aria-pressed", btn.dataset.lang === lang ? "true" : "false");
+  });
+  render(document.getElementById("parry-board"), parryRows, "parry");
+  render(document.getElementById("pet-board"), petRows, "pet");
+}
+async function loadBoard(url, shape) {
+  const resp = await fetch(url, { cache: "no-store" });
+  if (resp.status === 404) return [];
+  if (!resp.ok) throw new Error(String(resp.status));
+  const data = await resp.json();
+  if (!Array.isArray(data)) throw new Error("shape");
+  return shape(data);
+}
+function setLang(next) {
+  if (!STR[next]) return;
+  lang = next;
+  localStorage.setItem(LANG_KEY, lang);
+  paint();
+}
+document.addEventListener("click", (event) => {
+  const btn = event.target.closest("[data-lang]");
+  if (!btn) return;
+  setLang(btn.dataset.lang);
+});
+const saved = localStorage.getItem(LANG_KEY);
+lang = STR[saved] ? saved : "zh-Hant";
+paint();
+loadBoard(PARRY_URL, parryList).then((rows) => {
+  parryRows = rows;
+  parryNote = "";
+  paint();
+}).catch(() => {
+  parryNote = T().down;
+  paint();
+});
+loadBoard(PET_URL, petList).then((rows) => {
+  petRows = rows;
+  petNote = "";
+  paint();
+}).catch(() => {
+  petNote = T().down;
+  paint();
+});
+</script>
+</body>
+</html>
